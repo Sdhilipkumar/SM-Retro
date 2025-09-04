@@ -58,11 +58,11 @@ init_db()
 st.title("Sprint Feedback (10 Questions)")
 
 # Sprint dropdown
-sprint_options = ["Sprint-25", "Sprint-26", "Sprint-27", "Sprint-28"]
+sprint_options = ["Sprint-1", "Sprint-2", "Sprint-3", "Sprint-4"]
 sprint = st.selectbox("Select Sprint", sprint_options)
 
 # Team dropdown
-team_options = ["Alpha", "Beta", "Gamma", "Delta"]
+team_options = ["Vindhya", "Sahyadri", "Darwin", "CIS","NSS","Tejas","Ekalavya","iPrint-Constructor"]
 team_name = st.selectbox("Select Team", team_options)
 
 # Member name free text
