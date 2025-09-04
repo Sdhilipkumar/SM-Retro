@@ -29,8 +29,8 @@ def save_feedback(sprint, team, member_name, responses):
 # --- Streamlit UI ---
 st.title("Sprint Feedback Survey")
 
-sprint = st.selectbox("Select Sprint", ["Sprint 1", "Sprint 2", "Sprint 3"])
-team = st.selectbox("Select Team", ["Team A", "Team B", "Team C"])
+sprint = st.selectbox("Select Sprint", ["Sprint 1", "Sprint 2", "Sprint 3","Sprint 4"])
+team = st.selectbox("Select Team", ["Vindhya", "CIS", "Darwin"])
 member_name = st.text_input("Your Name")
 
 questions = [
