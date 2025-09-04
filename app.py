@@ -4,9 +4,11 @@ from firebase_admin import credentials, firestore
 from datetime import datetime
 import pandas as pd
 
+firebase_creds = dict(st.secrets["firebase"])  # ✅ convert to dict
+
 # --- Firestore Setup ---
+# Initialize Firebase only once
 if not firebase_admin._apps:
-    firebase_creds = st.secrets["firebase"]  # comes from Streamlit secrets
     cred = credentials.Certificate(firebase_creds)
     firebase_admin.initialize_app(cred)
 
