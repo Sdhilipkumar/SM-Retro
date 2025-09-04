@@ -1,155 +1,79 @@
 import streamlit as st
-import sqlite3
-from pathlib import Path
-import pandas as pd
+import firebase_admin
+from firebase_admin import credentials, firestore
 from datetime import datetime
+import pandas as pd
 
-# ----------------------
-# DB Setup
-# ----------------------
-DB_PATH = Path(__file__).parent / "feedback.db"
+# --- Firestore Setup ---
+if not firebase_admin._apps:
+    firebase_creds = st.secrets["firebase"]  # comes from Streamlit secrets
+    cred = credentials.Certificate(firebase_creds)
+    firebase_admin.initialize_app(cred)
 
-def get_conn():
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
+db = firestore.client()
+collection = db.collection("feedback")
 
-def init_db():
-    conn = get_conn()
-    c = conn.cursor()
-    c.execute(
-        """
-        CREATE TABLE IF NOT EXISTS feedback (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            sprint TEXT NOT NULL,
-            team_name TEXT NOT NULL,
-            member_name TEXT NOT NULL,
-            q1 TEXT, q2 TEXT, q3 TEXT, q4 TEXT, q5 TEXT,
-            q6 TEXT, q7 TEXT, q8 TEXT, q9 TEXT, q10 TEXT,
-            submitted_at TEXT
-        )
-        """
-    )
-    conn.commit()
-    conn.close()
+# --- Function to save feedback ---
+def save_feedback(sprint, team, member_name, responses):
+    doc = {
+        "sprint": sprint,
+        "team": team,
+        "member_name": member_name,
+        "responses": responses,
+        "submitted_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    collection.add(doc)
 
-def save_feedback(sprint, team_name, member_name, responses):
-    if len(responses) != 10:
-        raise ValueError("Expected 10 responses")
-    conn = get_conn()
-    c = conn.cursor()
-    c.execute(
-        """
-        INSERT INTO feedback
-        (sprint, team_name, member_name, q1,q2,q3,q4,q5,q6,q7,q8,q9,q10,submitted_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        """,
-        (sprint, team_name, member_name, *responses, datetime.utcnow().isoformat()),
-    )
-    conn.commit()
-    conn.close()
+# --- Streamlit UI ---
+st.title("Sprint Feedback Survey")
 
-# Ensure DB exists before UI renders
-init_db()
-
-# ----------------------
-# Streamlit UI
-# ----------------------
-st.title("Sprint Feedback (10 Questions)")
-
-# Sprint dropdown
-sprint_options = ["Sprint-1", "Sprint-2", "Sprint-3", "Sprint-4"]
-sprint = st.selectbox("Select Sprint", sprint_options)
-
-# Team dropdown
-team_options = ["Vindhya", "Sahyadri", "Darwin", "CIS","NSS","Tejas","Ekalavya","iPrint-Constructor"]
-team_name = st.selectbox("Select Team", team_options)
-
-# Member name free text
+sprint = st.selectbox("Select Sprint", ["Sprint 1", "Sprint 2", "Sprint 3"])
+team = st.selectbox("Select Team", ["Team A", "Team B", "Team C"])
 member_name = st.text_input("Your Name")
 
-st.write("### Please answer all questions")
-
 questions = [
-    "How clear were the sprint goals?",
-    "How well did the team collaborate?",
-    "How satisfied are you with communication?",
-    "How manageable was the workload?",
-    "How well were blockers resolved?",
-    "How useful were sprint ceremonies?",
-    "How confident are you in delivering sprint commitments?",
-    "How do you rate code quality this sprint?",
-    "How effective was testing & QA?",
-    "How satisfied are you overall with this sprint?",
+    "How clear were sprint goals?",
+    "How was collaboration?",
+    "Was work fairly distributed?",
+    "Were blockers resolved quickly?",
+    "Was code review effective?",
+    "Was sprint planning useful?",
+    "Was daily standup effective?",
+    "Was testing sufficient?",
+    "How was team morale?",
+    "How satisfied overall?"
 ]
 
-options = ["Poor", "Average", "Good", "Excellent"]
-
-# render radios
 responses = []
 for i, q in enumerate(questions, start=1):
-    response = st.radio(
-        f"Q{i}. {q}",
-        options,
-        key=f"q{i}",
-        index=0,  # default = "Poor"
-    )
-    responses.append(response)
+    responses.append(st.radio(q, ["Poor", "Average", "Good", "Excellent"], key=f"q{i}"))
 
-# Submit button
 if st.button("Submit Feedback"):
-    if not member_name.strip():
-        st.error("Please enter Your name.")
+    if member_name:
+        save_feedback(sprint, team, member_name, responses)
+        st.success("✅ Thank you! Your feedback has been saved.")
     else:
-        try:
-            save_feedback(sprint, team_name, member_name.strip(), responses)
-            st.success("✅ Feedback submitted successfully!")
-            # Clear state and reset form
-            for i in range(1, 11):
-                if f"q{i}" in st.session_state:
-                    del st.session_state[f"q{i}"]
-            st.rerun()
-        except Exception as e:
-            st.error(f"Database error: {e}")
+        st.error("Please enter your name.")
 
-st.write("---")
+# --- Admin view ---
+if st.checkbox("Show All Feedback Results"):
+    docs = collection.stream()
+    data = []
+    for doc in docs:
+        d = doc.to_dict()
+        row = {
+            "sprint": d["sprint"],
+            "team": d["team"],
+            "member_name": d["member_name"],
+            "submitted_at": d["submitted_at"],
+        }
+        # Flatten responses
+        for i, r in enumerate(d["responses"], start=1):
+            row[f"q{i}"] = r
+        data.append(row)
 
-# ----------------------
-# Admin / Viewer section
-# ----------------------
-with st.expander("Admin: View / Download Feedback"):
-    conn = get_conn()
-    df = pd.read_sql_query("SELECT * FROM feedback ORDER BY submitted_at DESC", conn)
-    conn.close()
-
-    if df.empty:
-        st.info("No feedback entries yet.")
+    if data:
+        df = pd.DataFrame(data)
+        st.dataframe(df)
     else:
-        sprint_list = ["All"] + sorted(df["sprint"].dropna().unique().tolist())
-        selected_sprint = st.selectbox("Filter by Sprint", sprint_list)
-
-        team_list = ["All"] + sorted(df["team_name"].dropna().unique().tolist())
-        selected_team = st.selectbox("Filter by Team", team_list)
-
-        view_df = df.copy()
-        if selected_sprint != "All":
-            view_df = view_df[view_df["sprint"] == selected_sprint]
-        if selected_team != "All":
-            view_df = view_df[view_df["team_name"] == selected_team]
-
-        st.dataframe(view_df, use_container_width=True)
-
-        csv = view_df.to_csv(index=False)
-        st.download_button(
-            "Download CSV for these results",
-            csv,
-            file_name=f"feedback_{selected_sprint}_{selected_team}.csv",
-            mime="text/csv",
-        )
-
-        if st.checkbox("Show per-question counts (summary)"):
-            cols = [f"q{i}" for i in range(1, 11)]
-            for col, q in zip(cols, questions):
-                st.markdown(f"**{q}**")
-                counts = view_df[col].value_counts().reindex(options, fill_value=0)
-                st.table(pd.DataFrame({"option": counts.index, "count": counts.values}))
+        st.info("No feedback submitted yet.")
