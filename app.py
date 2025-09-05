@@ -46,7 +46,7 @@ def save_feedback(sprint, team, member_name, role, responses, comments):
 # --- Streamlit UI ---
 
 sprint = st.selectbox("Select Sprint", ["Sprint 1", "Sprint 2", "Sprint 3", "Sprint 4"])
-team = st.selectbox("Select Team", ["Vindhya", "CIS", "Darwin"])
+team = st.selectbox("Select Team", ["Sahyadri","Vindhya", "Ekalavya", "Darwin","Cheetahs","Cumulus","Tejas","Constructors"])
 member_name = st.text_input("Your Name")
 role = st.selectbox("Select Role", ["Developer", "Scrum Master"])
 
