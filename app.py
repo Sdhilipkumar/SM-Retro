@@ -45,10 +45,10 @@ def save_feedback(sprint, team, member_name, role, responses, comments):
 
 # --- Streamlit UI ---
 
-sprint = st.selectbox("Select Sprint", ["Sprint 1", "Sprint 2", "Sprint 3", "Sprint 4"])
+sprint = st.selectbox("Select Sprint", ["Sprint 1", "Sprint 2", "Sprint 3", "Sprint 4","Sprint 5"])
 team = st.selectbox("Select Team", ["Sahyadri","Vindhya", "Ekalavya", "Darwin","Cheetahs","Cumulus","Tejas","Constructors"])
 member_name = st.text_input("Your Name")
-role = st.selectbox("Select Role", ["Developer", "Scrum Master"])
+role = st.selectbox("Select Role", ["Developer","QA","Scrum Master"])
 
 # Scrum Master password input
 scrum_master_password_ok = False
@@ -67,12 +67,12 @@ questions = [
     "Was code review effective?",
     "Was sprint planning useful?",
     "Was daily standup effective?",
-    "How satisfied overall?"
+    "How satisfied overall?",
 ]
 
 responses = []
 for i, q in enumerate(questions, start=1):
-    responses.append(st.radio(q, ["Poor", "Average", "Good", "Excellent"], key=f"q{i}"))
+    responses.append(st.radio(q, ["Poor", "Average", "Good", "Excellent"], key=f"Q{i}"))
 
 # --- Extra free-text comment box ---
 comments = st.text_area("Additional Comments (optional)")
